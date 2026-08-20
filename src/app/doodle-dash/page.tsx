@@ -32,7 +32,7 @@ const PENS = [
   "#38bdf8",
   "#c084fc",
   "#a3733f",
-  "#0d0a1c",
+  "#000000",
 ];
 
 export default function DoodleDashPage() {
