@@ -78,4 +78,14 @@ export const GAMES: GameDef[] = [
     minutes: "10 min",
     gradient: "from-pink-500 to-fuchsia-700",
   },
+  {
+    id: "quiz",
+    href: "/quiz",
+    name: "Quiz Night",
+    tagline: "Four answers. One is right.",
+    emoji: "🧠",
+    players: "1+",
+    minutes: "10 min",
+    gradient: "from-cyan-400 to-teal-600",
+  },
 ];

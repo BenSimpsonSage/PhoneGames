@@ -4,7 +4,7 @@
  */
 export const APP_NAME = "Party Box";
 export const APP_SHORT_NAME = "Party Box";
-export const APP_TAGLINE = "Six games. One phone. Everyone plays.";
+export const APP_TAGLINE = "Seven games. One phone. Everyone plays.";
 export const APP_DESCRIPTION =
   "A pocket arcade of party games for family game night — pass the phone around and play.";
 

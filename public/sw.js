@@ -13,7 +13,7 @@
  *    fingerprints these filenames, so a cached one is never stale.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `partybox-${VERSION}`;
 
 // Warm the cache with the routes, so the very first offline launch works even
@@ -26,6 +26,7 @@ const PRECACHE = [
   "/most-likely-to",
   "/categories",
   "/doodle-dash",
+  "/quiz",
 ];
 
 self.addEventListener("install", (event) => {
