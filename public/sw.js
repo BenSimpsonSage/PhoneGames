@@ -26,6 +26,7 @@ const PRECACHE = [
   "/most-likely-to",
   "/categories",
   "/doodle-dash",
+  "/describe-it",
   "/quiz",
 ];
 

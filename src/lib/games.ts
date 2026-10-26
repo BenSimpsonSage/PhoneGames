@@ -79,6 +79,16 @@ export const GAMES: GameDef[] = [
     gradient: "from-pink-500 to-fuchsia-700",
   },
   {
+    id: "describe-it",
+    href: "/describe-it",
+    name: "Describe It",
+    tagline: "Say it without saying it.",
+    emoji: "🗣️",
+    players: "3+",
+    minutes: "10 min",
+    gradient: "from-lime-400 to-emerald-600",
+  },
+  {
     id: "quiz",
     href: "/quiz",
     name: "Quiz Night",
