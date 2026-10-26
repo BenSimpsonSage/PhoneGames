@@ -17,7 +17,7 @@ chrome, like an App Store app.
 | **Most Likely To** | 3+ | Read it out, count to three, everyone points. Running scoreboard. |
 | **Categories** | 2+ | A topic and a random letter. Go round the circle before the buzzer. |
 | **Doodle Dash** | 3+ | Draw the word on screen while everyone shouts guesses. Takes turns picking an artist. |
-| **Describe It** | 3+ | Describe the word without saying it or any part of it. Timed turns, a point per word guessed, running scoreboard. |
+| **Describe It** | 3+ | Describe the word without saying it, any part of it, or its four banned words. Timed turns, a point per word guessed, running scoreboard. |
 
 ## Difficulty
 
@@ -63,7 +63,8 @@ t("Platypus", "tricky"),
 
 | File | Feeds |
 | --- | --- |
-| `src/data/heads-up.ts` | Heads Up and Describe It packs |
+| `src/data/heads-up.ts` | Heads Up packs |
+| `src/data/describe-it/` | Describe It packs — one file per pack, each card with its four banned words |
 | `src/data/imposter.ts` | Imposter packs |
 | `src/data/would-you-rather.ts` | The dilemmas |
 | `src/data/most-likely-to.ts` | The prompts |

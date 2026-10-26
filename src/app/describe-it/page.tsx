@@ -9,7 +9,7 @@ import { GetReady } from "@/components/GetReady";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { PlayerManager } from "@/components/PlayerManager";
 import { TimerRing } from "@/components/TimerRing";
-import { HEADS_UP_CATEGORIES } from "@/data/heads-up";
+import { DESCRIBE_IT_CATEGORIES } from "@/data/describe-it";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { useCountdown } from "@/lib/hooks/useCountdown";
@@ -18,7 +18,7 @@ import { useWakeLock } from "@/lib/hooks/useWakeLock";
 import { Dealer } from "@/lib/shuffle";
 import { sfx } from "@/lib/sound";
 import { useAppState } from "@/lib/state";
-import { usableCategories } from "@/lib/types";
+import { usableCategories, type TabooCard } from "@/lib/types";
 
 type Phase = "setup" | "handover" | "ready" | "playing" | "done";
 type Result = { text: string; got: boolean };
@@ -37,36 +37,48 @@ export default function DescribeItPage() {
     "partybox.describe.duration.v1",
     60,
   );
+  // Banned words are the whole game for grown-ups but a wall for a
+  // five-year-old, so they can be switched off.
+  const [showBanned, setShowBanned] = usePersistentState(
+    "partybox.describe.banned.v1",
+    true,
+  );
 
   const [turn, setTurn] = useState(0);
   const [scores, setScores] = useState<Record<string, number>>({});
-  const [word, setWord] = useState("");
+  const [card, setCard] = useState<TabooCard | null>(null);
   const [results, setResults] = useState<Result[]>([]);
   const [flash, setFlash] = useState<"got" | "pass" | null>(null);
 
   // One dealer for the whole game, so a word never comes round again until the
   // pack runs out — even across different describers.
-  const dealerRef = useRef<Dealer<string> | null>(null);
+  const dealerRef = useRef<Dealer<TabooCard> | null>(null);
   // Blocks input while the flash is on screen, so a double tap can't burn
   // through two cards.
   const lockedRef = useRef(false);
 
   const categories = useMemo(
-    () => usableCategories(HEADS_UP_CATEGORIES, tier),
+    () => usableCategories(DESCRIBE_IT_CATEGORIES, tier),
     [tier],
   );
 
-  // Describing works with the same words as Heads Up — both are "say it
-  // without saying it" — so the packs are shared rather than duplicated.
-  const words = useMemo(() => {
+  const cards = useMemo(() => {
     const chosen =
       categoryId === MIX_ID
         ? categories
         : categories.filter((c) => c.id === categoryId);
-    const pool = chosen.flatMap((c) => c.entries.map((e) => e.text));
-    return pool.length > 0
-      ? pool
-      : categories.flatMap((c) => c.entries.map((e) => e.text));
+    const pool = chosen.flatMap((c) => c.entries);
+    // A pack that vanished when the difficulty changed falls back to the lot.
+    const all = pool.length > 0 ? pool : categories.flatMap((c) => c.entries);
+    // Some cards live in two packs (a fire engine is both "out and about" and
+    // a thing that goes), so the mix keeps the first copy of each.
+    const seen = new Set<string>();
+    return all.filter((card) => {
+      const key = card.text.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [categories, categoryId]);
 
   const describer = players.length > 0 ? players[turn % players.length] : null;
@@ -89,10 +101,10 @@ export default function DescribeItPage() {
 
   const answer = useCallback(
     (got: boolean) => {
-      if (lockedRef.current) return;
+      if (lockedRef.current || !card) return;
       lockedRef.current = true;
 
-      setResults((current) => [...current, { text: word, got }]);
+      setResults((current) => [...current, { text: card.text, got }]);
       setFlash(got ? "got" : "pass");
       if (got) {
         haptics.correct();
@@ -104,11 +116,11 @@ export default function DescribeItPage() {
 
       window.setTimeout(() => {
         setFlash(null);
-        setWord(dealerRef.current?.next() ?? "");
+        setCard(dealerRef.current?.next() ?? null);
         lockedRef.current = false;
       }, 400);
     },
-    [word],
+    [card],
   );
 
   const turnScore = results.filter((r) => r.got).length;
@@ -129,7 +141,7 @@ export default function DescribeItPage() {
   );
 
   const startGame = () => {
-    dealerRef.current = new Dealer(words);
+    dealerRef.current = new Dealer(cards);
     setScores({});
     setTurn(0);
     setPhase("handover");
@@ -138,7 +150,7 @@ export default function DescribeItPage() {
   const beginTurn = () => {
     sfx.unlock();
     setResults([]);
-    setWord(dealerRef.current?.next() ?? "");
+    setCard(dealerRef.current?.next() ?? null);
     timer.reset(duration);
     setPhase("ready");
   };
@@ -190,8 +202,9 @@ export default function DescribeItPage() {
             <p className="text-4xl font-bold">{describer.name}</p>
           </div>
           <p className="text-muted max-w-xs text-center text-sm">
-            Describe each word without saying it, or any part of it. Everyone
-            else shouts out guesses.
+            {showBanned
+              ? "Describe each word without saying it, any part of it, or the banned words underneath. Everyone else shouts out guesses."
+              : "Describe each word without saying it, or any part of it. Everyone else shouts out guesses."}
           </p>
           <Button block onClick={beginTurn}>
             I&apos;m ready
@@ -244,13 +257,27 @@ export default function DescribeItPage() {
               </div>
             </div>
 
-            <div className="flex flex-1 items-center justify-center px-6">
-              <p
-                key={word}
-                className="animate-pop text-center text-5xl leading-tight font-bold text-balance"
-              >
-                {word}
+            <div
+              key={card?.text}
+              className="animate-pop flex flex-1 flex-col items-center justify-center gap-6 px-6"
+            >
+              <p className="text-center text-5xl leading-tight font-bold text-balance">
+                {card?.text}
               </p>
+              {showBanned && card && (
+                <div className="w-full max-w-xs rounded-2xl border border-rose-500/40 bg-rose-500/10 px-5 py-4 text-center">
+                  <p className="text-xs font-semibold tracking-wide text-rose-300 uppercase">
+                    Don&apos;t say
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {card.banned.map((banned) => (
+                      <li key={banned} className="text-2xl font-semibold">
+                        {banned}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="safe-bottom grid shrink-0 grid-cols-2 gap-3 px-4 pt-2">
@@ -363,15 +390,13 @@ export default function DescribeItPage() {
   return (
     <GameShell title="Describe It" subtitle="Say it without saying it">
       <div className="safe-x safe-bottom mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 overflow-y-auto pb-6">
-        <div className="bg-surface-2 border-line rounded-2xl border p-5">
-          <h2 className="mb-2 font-semibold">How it works</h2>
-          <p className="text-muted text-sm leading-relaxed">
-            Take it in turns to hold the phone and describe the words on screen
-            — without saying the word, any part of it, or what it rhymes with.
-            Get through as many as you can before time runs out. Every word
-            guessed is a point for the describer.
-          </p>
-        </div>
+        <Button
+          block
+          onClick={startGame}
+          disabled={players.length < 2 || cards.length === 0}
+        >
+          Start game
+        </Button>
 
         {players.length < 2 ? (
           <section>
@@ -398,6 +423,50 @@ export default function DescribeItPage() {
             </div>
           </section>
         )}
+
+        <div className="bg-surface-2 border-line rounded-2xl border p-5">
+          <h2 className="mb-2 font-semibold">How it works</h2>
+          <p className="text-muted text-sm leading-relaxed">
+            Take it in turns to hold the phone and describe the words on screen
+            — without saying the word, any part of it, or what it rhymes with.
+            {showBanned &&
+              " Each card also has four banned words you can't say either."}{" "}
+            Get through as many as you can before time runs out. Every word
+            guessed is a point for the describer.
+          </p>
+        </div>
+
+        <section>
+          <button
+            onClick={() => {
+              haptics.tap();
+              setShowBanned((current) => !current);
+            }}
+            className="bg-surface-2 border-line flex w-full items-center gap-3 rounded-2xl border p-4 text-left active:scale-[0.98]"
+          >
+            <span className="text-2xl">🚫</span>
+            <span className="flex-1">
+              <span className="block font-semibold">Banned words</span>
+              <span className="text-muted block text-xs">
+                Four extra words per card you can&apos;t say. Turn off for
+                little ones.
+              </span>
+            </span>
+            <span
+              className={cn(
+                "relative h-7 w-12 shrink-0 rounded-full transition",
+                showBanned ? "bg-fuchsia-500" : "bg-line",
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-1 size-5 rounded-full bg-white transition-all",
+                  showBanned ? "left-6" : "left-1",
+                )}
+              />
+            </span>
+          </button>
+        </section>
 
         <section>
           <h2 className="text-muted mb-3 text-sm font-semibold tracking-wide uppercase">
@@ -437,13 +506,6 @@ export default function DescribeItPage() {
         </section>
 
         <div className="mt-auto flex flex-col gap-3 pt-2">
-          <Button
-            block
-            onClick={startGame}
-            disabled={players.length < 2 || words.length === 0}
-          >
-            Start game
-          </Button>
           <Link
             href="/"
             className="text-muted py-2 text-center text-sm underline-offset-4 active:underline"

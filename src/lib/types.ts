@@ -53,28 +53,42 @@ export function t(text: string, tier: Tier): Entry {
   return { text, tier };
 }
 
-export function filterByTier(entries: Entry[], tier: Tier): Entry[] {
+/** A Describe It card: the word plus four words the describer can't say. */
+export type TabooCard = Entry & {
+  banned: [string, string, string, string];
+};
+
+/** Convenience for authoring Describe It decks: `c("Dog", "little", [...])`. */
+export function c(
+  text: string,
+  tier: Tier,
+  banned: [string, string, string, string],
+): TabooCard {
+  return { text, tier, banned };
+}
+
+export function filterByTier<E extends Entry>(entries: E[], tier: Tier): E[] {
   const allowed = new Set(tiersFor(tier));
   return entries.filter((e) => allowed.has(e.tier));
 }
 
 /** A themed pack of entries the player picks before a round. */
-export type DeckCategory = {
+export type DeckCategory<E extends Entry = Entry> = {
   id: string;
   name: string;
   emoji: string;
-  entries: Entry[];
+  entries: E[];
 };
 
 /**
  * Categories that still have enough material at the chosen tier. A pack with
  * two words left is worse than no pack at all, so thin ones are hidden.
  */
-export function usableCategories(
-  categories: DeckCategory[],
+export function usableCategories<E extends Entry>(
+  categories: DeckCategory<E>[],
   tier: Tier,
   minimum = 6,
-): DeckCategory[] {
+): DeckCategory<E>[] {
   return categories
     .map((c) => ({ ...c, entries: filterByTier(c.entries, tier) }))
     .filter((c) => c.entries.length >= minimum);
